@@ -502,7 +502,27 @@ jobs:
           else
             python main.py $FORCE_RUN_ARG
           fi
-      
+      - name: 运行连板梯队+概念板块补充脚本
+        continue-on-error: true
+        run: |
+          python supplement_data.py
+
+      - name: 推送补充数据到飞书
+        if: always()
+        continue-on-error: true
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+        run: |
+          if [ -f "supplement.md" ] && [ -n "$FEISHU_WEBHOOK_URL" ]; then
+            CONTENT=$(cat supplement.md)
+            PAYLOAD=$(jq -n --arg text "$CONTENT" '{msg_type: "text", content: {text: $text}}')
+            curl -X POST "$FEISHU_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD"
+          else
+            echo "跳过推送：supplement.md 不存在，或未配置 FEISHU_WEBHOOK_URL"
+          fi
+          
       - name: 上传分析报告
         uses: actions/upload-artifact@v6
         if: always()
